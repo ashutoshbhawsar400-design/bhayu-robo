@@ -1,336 +1,261 @@
 package com.bhayu.robot;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
-import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.os.Build;
 import android.os.Bundle;
-import android.view.Gravity;
-import android.view.View;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.RecognitionListener;
+import android.speech.tts.TextToSpeech;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.view.View;
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Set;
-import java.util.UUID;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
-    private final int BLUE = Color.rgb(0, 190, 255);
-    private final int BACKGROUND = Color.rgb(5, 10, 22);
+    private TextView status;
+    private SpeechRecognizer recognizer;
+    private TextToSpeech tts;
 
-    private BluetoothAdapter bluetoothAdapter;
-    private BluetoothSocket bluetoothSocket;
-    private OutputStream outputStream;
-
-    private TextView connectionStatus;
-    private TextView responseText;
-
-    private final UUID bluetoothUUID =
-            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private String language = "en-IN";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(35, 50, 35, 35);
 
-        createInterface();
-    }
+        status = new TextView(this);
+        status.setText("BHAYU AI is ready!");
+        status.setTextSize(25);
 
-    private void createInterface() {
+        Button english = new Button(this);
+        english.setText("English");
 
-        LinearLayout main = new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
-        main.setPadding(22, 30, 22, 20);
-        main.setBackgroundColor(BACKGROUND);
+        Button hindi = new Button(this);
+        hindi.setText("हिन्दी");
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(main);
+        Button listen = new Button(this);
+        listen.setText("🎤 TALK TO BHAYU");
 
-        TextView title = new TextView(this);
-        title.setText("B H A Y U");
-        title.setTextColor(BLUE);
-        title.setTextSize(34);
-        title.setGravity(Gravity.CENTER);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        main.addView(title);
+        layout.addView(status);
+        layout.addView(english);
+        layout.addView(hindi);
+        layout.addView(listen);
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("INTELLIGENT ROBOT ASSISTANT");
-        subtitle.setTextColor(Color.LTGRAY);
-        subtitle.setTextSize(12);
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 5, 0, 25);
-        main.addView(subtitle);
+        setContentView(layout);
 
-        TextView core = new TextView(this);
-        core.setText("◉");
-        core.setTextColor(BLUE);
-        core.setTextSize(100);
-        core.setGravity(Gravity.CENTER);
-        main.addView(core);
+        tts = new TextToSpeech(this, result -> {
+            if (result == TextToSpeech.SUCCESS) {
+                speak("Hello Ashutosh. BHAYU is ready.");
+            }
+        });
 
-        connectionStatus = new TextView(this);
-        connectionStatus.setText("● DISCONNECTED");
-        connectionStatus.setTextColor(Color.RED);
-        connectionStatus.setTextSize(16);
-        connectionStatus.setGravity(Gravity.CENTER);
-        connectionStatus.setPadding(0, 15, 0, 15);
-        main.addView(connectionStatus);
+        english.setOnClickListener(v -> {
+            language = "en-IN";
+            status.setText("English selected");
+            speak("English selected");
+        });
 
-        Button connect = makeButton("CONNECT TO ROBOT");
-        connect.setOnClickListener(v -> showBluetoothDevices());
-        main.addView(connect);
+        hindi.setOnClickListener(v -> {
+            language = "hi-IN";
+            status.setText("हिन्दी चुनी गई");
+            speak("हिन्दी चुनी गई");
+        });
 
-        addHeading(main, "ROBOT MOVEMENT");
+        listen.setOnClickListener(v -> startListening());
 
-        addControlRow(main, "⬆ FORWARD", "⬅ LEFT", "➡ RIGHT");
-        addControlRow(main, "⬇ BACKWARD", "■ STOP", " ");
-
-        addHeading(main, "ROBOT ARM");
-
-        addControlRow(main, "ARM UP", "ARM DOWN", " ");
-        addControlRow(main, "GRIP OPEN", "GRIP CLOSE", " ");
-
-        addHeading(main, "BHAYU AI");
-
-        responseText = new TextView(this);
-        responseText.setText("Hello Ashutosh! I am BHAYU.\nYour robot assistant is ready.");
-        responseText.setTextColor(Color.WHITE);
-        responseText.setTextSize(16);
-        responseText.setPadding(12, 15, 12, 15);
-        main.addView(responseText);
-
-        Button identity = makeButton("WHO BUILT YOU?");
-        identity.setOnClickListener(v ->
-                responseText.setText("I was built by Ashutosh."));
-        main.addView(identity);
-
-        TextView footer = new TextView(this);
-        footer.setText("BHAYU • CREATED BY ASHUTOSH");
-        footer.setTextColor(BLUE);
-        footer.setGravity(Gravity.CENTER);
-        footer.setPadding(0, 30, 0, 10);
-        main.addView(footer);
-
-        setContentView(scroll);
-    }
-
-    private void addHeading(LinearLayout layout, String text) {
-        TextView heading = new TextView(this);
-        heading.setText(text);
-        heading.setTextColor(BLUE);
-        heading.setTextSize(18);
-        heading.setTypeface(Typeface.DEFAULT_BOLD);
-        heading.setPadding(0, 25, 0, 12);
-        layout.addView(heading);
-    }
-
-    private Button makeButton(String text) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setTextColor(Color.WHITE);
-        button.setTextSize(13);
-        button.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(
-                        Color.rgb(12, 55, 85)));
-        return button;
-    }
-
-    private void addControlRow(
-            LinearLayout layout, String first, String second, String third) {
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-
-        addControlButton(row, first);
-        addControlButton(row, second);
-
-        if (!third.trim().isEmpty()) {
-            addControlButton(row, third);
-        }
-
-        layout.addView(row);
-    }
-
-    private void addControlButton(LinearLayout row, String label) {
-
-        Button button = makeButton(label);
-
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(0, 65, 1);
-
-        params.setMargins(3, 4, 3, 4);
-        row.addView(button, params);
-
-        button.setOnClickListener(v -> handleCommand(label));
-    }
-
-    private void handleCommand(String label) {
-
-        String command = "";
-
-        if (label.contains("FORWARD")) command = "F";
-        else if (label.contains("BACKWARD")) command = "B";
-        else if (label.contains("LEFT")) command = "L";
-        else if (label.contains("RIGHT")) command = "R";
-        else if (label.contains("STOP")) command = "S";
-        else if (label.contains("ARM UP")) command = "ARM_UP";
-        else if (label.contains("ARM DOWN")) command = "ARM_DOWN";
-        else if (label.contains("GRIP OPEN")) command = "GRIP_OPEN";
-        else if (label.contains("GRIP CLOSE")) command = "GRIP_CLOSE";
-
-        sendCommand(command);
-    }
-
-    private void showBluetoothDevices() {
-
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, "Bluetooth is not supported",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        if (Build.VERSION.SDK_INT >= 31 &&
-                checkSelfPermission("android.permission.BLUETOOTH_CONNECT")
-                        != PackageManager.PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= 23 &&
+                checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
 
             requestPermissions(
-                    new String[]{"android.permission.BLUETOOTH_CONNECT"}, 100);
-            return;
-        }
-
-        if (!bluetoothAdapter.isEnabled()) {
-            Toast.makeText(this, "Please turn on Bluetooth",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        try {
-            Set<BluetoothDevice> paired = bluetoothAdapter.getBondedDevices();
-
-            ArrayList<BluetoothDevice> devices = new ArrayList<>();
-            ArrayList<String> names = new ArrayList<>();
-
-            for (BluetoothDevice device : paired) {
-                devices.add(device);
-                names.add(device.getName() + "\n" + device.getAddress());
-            }
-
-            if (devices.isEmpty()) {
-                Toast.makeText(this,
-                        "Pair your HC-05 in Android Bluetooth settings first",
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            new AlertDialog.Builder(this)
-                    .setTitle("Select your robot")
-                    .setItems(names.toArray(new String[0]),
-                            (dialog, which) -> connectToDevice(devices.get(which)))
-                    .setNegativeButton("Cancel", null)
-                    .show();
-
-        } catch (SecurityException e) {
-            Toast.makeText(this, "Bluetooth permission required",
-                    Toast.LENGTH_LONG).show();
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    100
+            );
         }
     }
 
-    private void connectToDevice(BluetoothDevice device) {
+    private void startListening() {
 
-        connectionStatus.setText("● CONNECTING...");
-        connectionStatus.setTextColor(Color.YELLOW);
-
-        new Thread(() -> {
-            try {
-                BluetoothSocket socket =
-                        device.createRfcommSocketToServiceRecord(bluetoothUUID);
-
-                socket.connect();
-
-                OutputStream stream = socket.getOutputStream();
-
-                runOnUiThread(() -> {
-                    bluetoothSocket = socket;
-                    outputStream = stream;
-
-                    connectionStatus.setText("● ROBOT CONNECTED");
-                    connectionStatus.setTextColor(Color.GREEN);
-
-                    Toast.makeText(this, "BHAYU connected!",
-                            Toast.LENGTH_SHORT).show();
-                });
-
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    connectionStatus.setText("● CONNECTION FAILED");
-                    connectionStatus.setTextColor(Color.RED);
-
-                    Toast.makeText(this, "Connection failed. Check HC-05.",
-                            Toast.LENGTH_LONG).show();
-                });
-            }
-        }).start();
-    }
-
-    private void sendCommand(String command) {
-
-        if (command.equals("S")) {
-            // STOP is always attempted immediately.
-        }
-
-        if (outputStream == null) {
-            Toast.makeText(this, "Connect to your robot first",
-                    Toast.LENGTH_SHORT).show();
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            status.setText("Speech recognition unavailable");
+            speak("Speech recognition is not available.");
             return;
         }
 
-        try {
-            outputStream.write((command + "\n").getBytes());
-            outputStream.flush();
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    100
+            );
+            return;
+        }
 
-        } catch (Exception e) {
-            connectionStatus.setText("● CONNECTION LOST");
-            connectionStatus.setTextColor(Color.RED);
+        if (recognizer != null) {
+            recognizer.destroy();
+        }
+
+        recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+
+        recognizer.setRecognitionListener(new RecognitionListener() {
+
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+                status.setText("Listening...");
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {}
+
+            @Override
+            public void onRmsChanged(float rmsdB) {}
+
+            @Override
+            public void onBufferReceived(byte[] buffer) {}
+
+            @Override
+            public void onEndOfSpeech() {
+                status.setText("Processing...");
+            }
+
+            @Override
+            public void onError(int error) {
+                status.setText("Try speaking again");
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+
+                ArrayList<String> matches =
+                        results.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION
+                        );
+
+                if (matches != null && !matches.isEmpty()) {
+                    String command = matches.get(0);
+                    status.setText(command);
+                    processCommand(command);
+                }
+            }
+
+            @Override
+            public void onPartialResults(Bundle partialResults) {}
+
+            @Override
+            public void onEvent(int eventType, Bundle params) {}
+        });
+
+        Intent intent = new Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        );
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        );
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE,
+                language
+        );
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_MAX_RESULTS,
+                3
+        );
+
+        recognizer.startListening(intent);
+    }
+
+    private void processCommand(String command) {
+
+        String text = command.toLowerCase(Locale.ROOT);
+
+        if (text.contains("who built you") ||
+                text.contains("who created you") ||
+                text.contains("how were you built") ||
+                text.contains("तुम्हें किसने बनाया") ||
+                text.contains("किसने बनाया")) {
+
+            if (language.equals("hi-IN")) {
+                speak("मुझे Ashutosh ने बनाया है।");
+            } else {
+                speak("I was built by Ashutosh.");
+            }
+
+        } else if (text.contains("hello") ||
+                text.contains("hi") ||
+                text.contains("नमस्ते") ||
+                text.contains("हेलो")) {
+
+            speak(language.equals("hi-IN")
+                    ? "जी Ashutosh!"
+                    : "Yes, Ashutosh?");
+
+        } else if (text.contains("how are you") ||
+                text.contains("कैसे हो")) {
+
+            speak(language.equals("hi-IN")
+                    ? "मैं बिल्कुल ठीक हूँ।"
+                    : "I am doing great, Ashutosh.");
+
+        } else if (text.contains("your name") ||
+                text.contains("तुम्हारा नाम")) {
+
+            speak("My name is BHAYU.");
+
+        } else {
+
+            speak(language.equals("hi-IN")
+                    ? "माफ कीजिए, मैं समझ नहीं पाया।"
+                    : "Sorry, I didn't understand that command.");
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(
-            int requestCode, String[] permissions, int[] grantResults) {
+    private void speak(String message) {
 
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (tts != null) {
 
-        if (requestCode == 100 &&
-                grantResults.length > 0 &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            showBluetoothDevices();
-        } else if (requestCode == 100) {
-            Toast.makeText(this, "Bluetooth permission denied",
-                    Toast.LENGTH_LONG).show();
+            Locale locale = language.equals("hi-IN")
+                    ? new Locale("hi", "IN")
+                    : new Locale("en", "IN");
+
+            tts.setLanguage(locale);
+
+            tts.speak(
+                    message,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "BHAYU_RESPONSE"
+            );
         }
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
 
-        try {
-            if (bluetoothSocket != null) {
-                bluetoothSocket.close();
-            }
-        } catch (Exception ignored) {
+        if (recognizer != null) {
+            recognizer.destroy();
         }
+
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+
+        super.onDestroy();
     }
 }
