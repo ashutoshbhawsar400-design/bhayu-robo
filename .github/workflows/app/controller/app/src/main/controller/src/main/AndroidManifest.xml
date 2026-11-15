@@ -13,7 +13,7 @@
 
     <application
         android:theme="@android:style/Theme.Material.NoActionBar"
-        android:label="BHAYU AI"
+        android:label="BHAYU Remote"
         android:allowBackup="false"
         android:supportsRtl="true">
 
