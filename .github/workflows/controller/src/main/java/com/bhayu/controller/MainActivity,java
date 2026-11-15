@@ -1,0 +1,350 @@
+package com.bhayu.controller;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.UUID;
+
+public class MainActivity extends Activity {
+
+    private final int BLUE = Color.rgb(0, 190, 255);
+    private final int BACKGROUND = Color.rgb(5, 10, 22);
+
+    private BluetoothAdapter bluetoothAdapter;
+    private BluetoothSocket bluetoothSocket;
+    private OutputStream outputStream;
+
+    private TextView status;
+
+    private final UUID bluetoothUUID =
+            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        createInterface();
+    }
+
+    private void createInterface() {
+
+        LinearLayout main = new LinearLayout(this);
+        main.setOrientation(LinearLayout.VERTICAL);
+        main.setPadding(20, 25, 20, 20);
+        main.setBackgroundColor(BACKGROUND);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(main);
+
+        TextView title = new TextView(this);
+        title.setText("B H A Y U");
+        title.setTextColor(BLUE);
+        title.setTextSize(32);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        main.addView(title);
+
+        TextView subtitle = new TextView(this);
+        subtitle.setText("REMOTE CONTROL SYSTEM");
+        subtitle.setTextColor(Color.LTGRAY);
+        subtitle.setTextSize(13);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setPadding(0, 5, 0, 25);
+        main.addView(subtitle);
+
+        status = new TextView(this);
+        status.setText("● DISCONNECTED");
+        status.setTextColor(Color.RED);
+        status.setTextSize(16);
+        status.setGravity(Gravity.CENTER);
+        status.setPadding(0, 15, 0, 15);
+        main.addView(status);
+
+        Button connect = makeButton("CONNECT TO HC-05");
+        connect.setOnClickListener(v -> showBluetoothDevices());
+        main.addView(connect);
+
+        addHeading(main, "MOVEMENT");
+
+        addRow(main, "⬆ FORWARD", "⬇ BACKWARD");
+        addRow(main, "⬅ LEFT", "➡ RIGHT");
+
+        Button stop = makeButton("■ EMERGENCY STOP");
+        stop.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(
+                        Color.rgb(170, 20, 20)));
+        stop.setOnClickListener(v -> sendCommand("S"));
+        main.addView(stop);
+
+        addHeading(main, "ARM CONTROL");
+
+        addRow(main, "ARM UP", "ARM DOWN");
+        addRow(main, "GRIP OPEN", "GRIP CLOSE");
+
+        addHeading(main, "SERVO CONTROL");
+
+        addRow(main, "SERVO 1", "SERVO 2");
+        addRow(main, "SERVO 3", " ");
+
+        TextView note = new TextView(this);
+        note.setText(
+                "BHAYU REMOTE\n" +
+                "Bluetooth control interface\n\n" +
+                "Created for the BHAYU robot project."
+        );
+        note.setTextColor(Color.LTGRAY);
+        note.setTextSize(14);
+        note.setGravity(Gravity.CENTER);
+        note.setPadding(0, 25, 0, 15);
+        main.addView(note);
+
+        setContentView(scroll);
+    }
+
+    private void addHeading(LinearLayout layout, String text) {
+
+        TextView heading = new TextView(this);
+        heading.setText(text);
+        heading.setTextColor(BLUE);
+        heading.setTextSize(18);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        heading.setPadding(0, 25, 0, 12);
+
+        layout.addView(heading);
+    }
+
+    private Button makeButton(String text) {
+
+        Button button = new Button(this);
+        button.setText(text);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(13);
+
+        button.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(
+                        Color.rgb(12, 55, 85)));
+
+        return button;
+    }
+
+    private void addRow(
+            LinearLayout layout, String first, String second) {
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+
+        addControlButton(row, first);
+
+        if (!second.trim().isEmpty()) {
+            addControlButton(row, second);
+        }
+
+        layout.addView(row);
+    }
+
+    private void addControlButton(
+            LinearLayout row, String label) {
+
+        Button button = makeButton(label);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(0, 65, 1);
+
+        params.setMargins(4, 4, 4, 4);
+
+        row.addView(button, params);
+
+        button.setOnClickListener(v -> handleCommand(label));
+    }
+
+    private void handleCommand(String label) {
+
+        String command = "";
+
+        if (label.contains("FORWARD")) command = "F";
+        else if (label.contains("BACKWARD")) command = "B";
+        else if (label.contains("LEFT")) command = "L";
+        else if (label.contains("RIGHT")) command = "R";
+        else if (label.contains("STOP")) command = "S";
+        else if (label.equals("ARM UP")) command = "ARM_UP";
+        else if (label.equals("ARM DOWN")) command = "ARM_DOWN";
+        else if (label.equals("GRIP OPEN")) command = "GRIP_OPEN";
+        else if (label.equals("GRIP CLOSE")) command = "GRIP_CLOSE";
+        else if (label.equals("SERVO 1")) command = "SERVO1";
+        else if (label.equals("SERVO 2")) command = "SERVO2";
+        else if (label.equals("SERVO 3")) command = "SERVO3";
+
+        if (!command.isEmpty()) {
+            sendCommand(command);
+        }
+    }
+
+    private void showBluetoothDevices() {
+
+        if (bluetoothAdapter == null) {
+            Toast.makeText(this, "Bluetooth not supported",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= 31 &&
+                checkSelfPermission("android.permission.BLUETOOTH_CONNECT")
+                        != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(
+                    new String[]{
+                            "android.permission.BLUETOOTH_CONNECT"
+                    }, 100);
+
+            return;
+        }
+
+        try {
+            if (!bluetoothAdapter.isEnabled()) {
+                Toast.makeText(this, "Turn on Bluetooth first",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            Set<BluetoothDevice> paired =
+                    bluetoothAdapter.getBondedDevices();
+
+            ArrayList<BluetoothDevice> devices = new ArrayList<>();
+            ArrayList<String> names = new ArrayList<>();
+
+            for (BluetoothDevice device : paired) {
+                devices.add(device);
+                names.add(device.getName() + "\n" + device.getAddress());
+            }
+
+            if (devices.isEmpty()) {
+                Toast.makeText(this,
+                        "Pair HC-05 in Android Bluetooth settings first",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Select HC-05")
+                    .setItems(names.toArray(new String[0]),
+                            (dialog, which) ->
+                                    connectToDevice(devices.get(which)))
+                    .setNegativeButton("Cancel", null)
+                    .show();
+
+        } catch (SecurityException e) {
+            Toast.makeText(this, "Bluetooth permission required",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void connectToDevice(BluetoothDevice device) {
+
+        status.setText("● CONNECTING...");
+        status.setTextColor(Color.YELLOW);
+
+        new Thread(() -> {
+
+            try {
+                BluetoothSocket socket =
+                        device.createRfcommSocketToServiceRecord(
+                                bluetoothUUID);
+
+                socket.connect();
+
+                OutputStream stream = socket.getOutputStream();
+
+                runOnUiThread(() -> {
+                    bluetoothSocket = socket;
+                    outputStream = stream;
+
+                    status.setText("● CONNECTED");
+                    status.setTextColor(Color.GREEN);
+
+                    Toast.makeText(this, "Connected to BHAYU",
+                            Toast.LENGTH_SHORT).show();
+                });
+
+            } catch (Exception e) {
+
+                runOnUiThread(() -> {
+                    status.setText("● CONNECTION FAILED");
+                    status.setTextColor(Color.RED);
+
+                    Toast.makeText(this,
+                            "Check HC-05 and try again",
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+
+        }).start();
+    }
+
+    private void sendCommand(String command) {
+
+        if (outputStream == null) {
+            Toast.makeText(this, "Connect to HC-05 first",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            outputStream.write((command + "\n").getBytes());
+            outputStream.flush();
+
+        } catch (Exception e) {
+            status.setText("● CONNECTION LOST");
+            status.setTextColor(Color.RED);
+
+            outputStream = null;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults) {
+
+        super.onRequestPermissionsResult(
+                requestCode, permissions, grantResults);
+
+        if (requestCode == 100 &&
+                grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+            showBluetoothDevices();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        try {
+            if (bluetoothSocket != null) {
+                bluetoothSocket.close();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+}
