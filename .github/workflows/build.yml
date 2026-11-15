@@ -14,24 +14,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Build BHAYU
-        run: |
-          chmod +x gradlew
-          ./gradlew :app:assembleDebug
+        run: gradle :app:assembleDebug
 
       - name: Build BHAYU Remote
-        run: ./gradlew :controller:assembleDebug
+        run: gradle :controller:assembleDebug
 
-      - name: Upload BHAYU APKs
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: BHAYU-APKs
