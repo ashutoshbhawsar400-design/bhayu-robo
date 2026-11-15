@@ -1,31 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Microphone permission -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-
+    <!-- Bluetooth support -->
     <uses-feature
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
-    <!-- Microphone -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <!-- Foreground microphone service -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-
-    <!-- Notifications -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Bluetooth -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
+
     <uses-permission
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Speech recognition visibility -->
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
