@@ -26,9 +26,11 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build BHAYU
+        working-directory: .github/workflows
         run: gradle :app:assembleDebug
 
       - name: Build BHAYU Remote
+        working-directory: .github/workflows
         run: gradle :controller:assembleDebug
 
       - name: Upload APKs
@@ -36,5 +38,5 @@ jobs:
         with:
           name: BHAYU-APKs
           path: |
-            app/build/outputs/apk/debug/*.apk
-            controller/build/outputs/apk/debug/*.apk
+            .github/workflows/app/build/outputs/apk/debug/*.apk
+            .github/workflows/controller/build/outputs/apk/debug/*.apk
