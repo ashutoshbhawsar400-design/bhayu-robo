@@ -14,6 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BHAYU"
+rootProject.name = "BHAYU-ROBOT"
+
 include ':app'
 include ':controller'
